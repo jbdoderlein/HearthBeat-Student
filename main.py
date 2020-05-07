@@ -9,9 +9,8 @@ import argparse
 ap = argparse.ArgumentParser()
 ap.add_argument("-t", "--token", required=True, help="bot token")
 ap.add_argument("-dbh", "--dbhost", type=str, default="localhost", help="Mongod db hostname")
-ap.add_argument("-dbn", "--dbname", type=str, default="hearthbeat", help="Mongod db name")
 ap.add_argument("-dbu", "--dbuser", type=str, default=None, help="Mongod db username")
-ap.add_argument("-dbp", "--dbu", type=str, default=None, help="Mongod db username")
+ap.add_argument("-dbp", "--dbpassword", type=str, default=None, help="Mongod db password")
 
 args = vars(ap.parse_args())
 
@@ -26,7 +25,7 @@ def is_dev():
 description = '''HearthBeat'''
 bot = commands.Bot(command_prefix='?', description=description)
 
-bot.add_cog(HearthBeat(bot))
+bot.add_cog(HearthBeat(bot, host=args['dbhost'], username=args['dbuser'], password=args['dbpassword']))
 
 
 @bot.event
@@ -62,4 +61,4 @@ async def shutdown(ctx):
     """shutdown"""
     await bot.close()
 
-bot.run(TOKEN)
+bot.run(args['token'])
