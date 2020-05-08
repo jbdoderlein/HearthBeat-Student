@@ -46,7 +46,7 @@ class HearthBeat(commands.Cog):
             color=discord.Colour.blue(),
         )
         embed.set_author(
-            name='Hearth Beat',
+            name='Heart Beat',
             icon_url="https://cdn.iconscout.com/icon/free/png-256/student-classroom-bench-tired-bore-rest-resting-46451.png"
         )
         if member.nick is None:
@@ -70,4 +70,44 @@ class HearthBeat(commands.Cog):
         type_str = "`"+"\n".join([f"{a} : {i[0]}/{i[1]}" for a, i in type_appel.items()])+"`"
         embed.add_field(name="Moyenne sur les cours : ", value=type_str)
 
+        await ctx.send(embed=embed)
+
+    @commands.command(pass_context=True, no_pm=True, hidden=True)
+    async def classe(self, ctx, *, role: discord.Role):
+        membres_classe = [r.id for r in role.members]
+
+        embed = discord.Embed(
+            type="rich",
+            color=discord.Colour.blue(),
+        )
+        embed.set_author(
+            name='Heart Beat',
+            icon_url="https://cdn.iconscout.com/icon/free/png-256/student-classroom-bench-tired-bore-rest-resting-46451.png"
+        )
+
+
+        stat_membre = {}
+        global_cour = {}
+        async for document in self.db.appels.find({}): # Pour tous les appels
+            if document['channel'] not in global_cour:
+                global_cour[document['channel']] = 0
+            global_cour[document['channel']] += 1
+            for member in document['present']: # pour chaque membre présent
+                if member in membres_classe:
+                    if member not in stat_membre: # Si o na pas register le membre
+                        stat_membre[member] = {}
+                        discord_member = discord.utils.get(ctx.guild.members, id=member)
+                        if discord_member.nick is None:
+                            stat_membre[member]['name'] = discord_member.name
+                        else:
+                            stat_membre[member]['name'] = discord_member.nick
+
+                    if document['channel'] not in stat_membre[member]:
+                        stat_membre[member][document['channel']] = 0
+                    stat_membre[member][document['channel']] += 1
+
+        embed.add_field(name="Nombre de cours", value=str(" ".join([f"{i} : {d}" for i,d in global_cour.items()])))
+
+        stat_str = "`"+"\n".join([f"{eleve['name']} :"+", ".join([f"{typ}({eleve.get(typ, 0)}/{ct})" for typ, ct in global_cour.items()]) for idd, eleve in stat_membre.items()])+"`"
+        embed.add_field(name="Stat", value=stat_str)
         await ctx.send(embed=embed)

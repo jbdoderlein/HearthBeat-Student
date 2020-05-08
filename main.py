@@ -1,5 +1,4 @@
 import asyncio
-import sys
 import discord
 from discord.ext import commands
 from cogs.HearthBeat import HearthBeat
@@ -22,7 +21,7 @@ def is_dev():
     return commands.check(predicate)
 
 
-description = '''HearthBeat'''
+description = '''Heart Beat'''
 bot = commands.Bot(command_prefix='?', description=description)
 
 bot.add_cog(HearthBeat(bot, host=args['dbhost'], username=args['dbuser'], password=args['dbpassword']))
@@ -34,7 +33,8 @@ async def on_ready():
     print(bot.user.name)
     print(bot.user.id)
     print('------')
-    activity = discord.Activity(name="Prêt à faire l'appel", type=discord.ActivityType.listening)
+    activity = discord.Activity(name="la classe",
+                                type=discord.ActivityType.watching)
     await bot.change_presence(activity=activity)
 
 
