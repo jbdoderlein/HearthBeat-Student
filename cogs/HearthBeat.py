@@ -5,6 +5,12 @@ from discord.ext import commands
 import motor.motor_asyncio
 import asyncio
 
+def is_admin():
+    async def predicate(ctx):
+        return bool((int(ctx.author.permissions) >> 3) & 1)
+
+    return commands.check(predicate)
+
 class HearthBeat(commands.Cog):
     def __init__(self, bot, host, username, password):
         self.bot = bot
@@ -75,17 +81,6 @@ class HearthBeat(commands.Cog):
     @commands.command(pass_context=True, no_pm=True, hidden=True)
     async def classe(self, ctx, *, role: discord.Role):
         membres_classe = [r.id for r in role.members]
-
-        embed = discord.Embed(
-            type="rich",
-            color=discord.Colour.blue(),
-        )
-        embed.set_author(
-            name='Heart Beat',
-            icon_url="https://cdn.iconscout.com/icon/free/png-256/student-classroom-bench-tired-bore-rest-resting-46451.png"
-        )
-
-
         stat_membre = {}
         global_cour = {}
         async for document in self.db.appels.find({}): # Pour tous les appels
@@ -105,9 +100,23 @@ class HearthBeat(commands.Cog):
                     if document['channel'] not in stat_membre[member]:
                         stat_membre[member][document['channel']] = 0
                     stat_membre[member][document['channel']] += 1
+        print(stat_membre)
 
-        embed.add_field(name="Nombre de cours", value=str(" ".join([f"{i} : {d}" for i,d in global_cour.items()])))
-
-        stat_str = "`"+"\n".join([f"{eleve['name']} :"+", ".join([f"{typ}({eleve.get(typ, 0)}/{ct})" for typ, ct in global_cour.items()]) for idd, eleve in stat_membre.items()])+"`"
-        embed.add_field(name="Stat", value=stat_str)
-        await ctx.send(embed=embed)
+        await ctx.send("Nombre de cours : "+str(" ".join([f"{i} : {d}" for i,d in global_cour.items()])))
+        stat_str = "\n".join([f"{eleve['name']} :"+", ".join([f"{typ}({eleve.get(typ, 0)}/{ct})" for typ, ct in global_cour.items()]) for idd, eleve in stat_membre.items()])
+        i = 0
+        while i < len(stat_str):
+            embed = discord.Embed(
+                type="rich",
+                color=discord.Colour.blue(),
+            )
+            embed.set_author(
+                name='Heart Beat',
+                icon_url="https://cdn.iconscout.com/icon/free/png-256/student-classroom-bench-tired-bore-rest-resting-46451.png"
+            )
+            if i+1000 < len(stat_str):
+                embed.add_field(name="Stat", value=f"`{stat_str[i:i+1000]}`")
+            else:
+                embed.add_field(name="Stat", value=f"`{stat_str[i:]}`")
+            await ctx.send(embed=embed)
+            i += 1000
