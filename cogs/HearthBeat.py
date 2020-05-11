@@ -1,9 +1,26 @@
 import datetime
-
+import imgkit
 import discord
 from discord.ext import commands
 import motor.motor_asyncio
 import asyncio
+
+HTML_TEMPLATE = """
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet" />
+<table class="striped">
+        <thead>
+          <tr>
+              <th>Nom/Prénom</th>
+              {head}
+          </tr>
+        </thead>
+
+        <tbody>
+             {body}     
+        </tbody>
+      </table>"""
 
 def is_admin():
     async def predicate(ctx):
@@ -29,12 +46,13 @@ class HearthBeat(commands.Cog):
 
 
     @commands.command(pass_context=True, no_pm=True, hidden=True)
-    async def appel(self, ctx):
+    async def appel(self, ctx, *, name: str):
         """Fait l'appel"""
         if ctx.author.voice is not None:
             voice_channel = ctx.author.voice.channel
             print(voice_channel.members)
             appel = {
+                'name': name,
                 'date': datetime.datetime.now(),
                 'present': [member.id for member in voice_channel.members],
                 'channel': voice_channel.name,
@@ -80,43 +98,45 @@ class HearthBeat(commands.Cog):
 
     @commands.command(pass_context=True, no_pm=True, hidden=True)
     async def classe(self, ctx, *, role: discord.Role):
-        membres_classe = [r.id for r in role.members]
-        stat_membre = {}
-        global_cour = {}
-        async for document in self.db.appels.find({}): # Pour tous les appels
-            if document['channel'] not in global_cour:
-                global_cour[document['channel']] = 0
-            global_cour[document['channel']] += 1
-            for member in document['present']: # pour chaque membre présent
-                if member in membres_classe:
-                    if member not in stat_membre: # Si o na pas register le membre
-                        stat_membre[member] = {}
-                        discord_member = discord.utils.get(ctx.guild.members, id=member)
-                        if discord_member.nick is None:
-                            stat_membre[member]['name'] = discord_member.name
-                        else:
-                            stat_membre[member]['name'] = discord_member.nick
+        """Affiche un tableau avec les présence"""
+        msg = await ctx.send(":gear: Start to process data :floppy_disk:")
+        appel_dic = {} # Dico avec les appels, et les présents
+        eleve_dic = {} # dico index sur le nom pour le tri alphabétique qui contient l'id
+        async for document in self.db.appels.find({}):  # Pour tous les appels
+            date = document['date'] # date du cours
+            appel_dic[f"{document['name']} du {date.day}/{date.month}, {date.hour}:{date.minute}"] = document['present']
+            # Ajout avec comme index le str d affichage et en value la liste des présents
 
-                    if document['channel'] not in stat_membre[member]:
-                        stat_membre[member][document['channel']] = 0
-                    stat_membre[member][document['channel']] += 1
-        print(stat_membre)
-
-        await ctx.send("Nombre de cours : "+str(" ".join([f"{i} : {d}" for i,d in global_cour.items()])))
-        stat_str = "\n".join([f"{eleve['name']} :"+", ".join([f"{typ}({eleve.get(typ, 0)}/{ct})" for typ, ct in global_cour.items()]) for idd, eleve in stat_membre.items()])
-        i = 0
-        while i < len(stat_str):
-            embed = discord.Embed(
-                type="rich",
-                color=discord.Colour.blue(),
-            )
-            embed.set_author(
-                name='Heart Beat',
-                icon_url="https://cdn.iconscout.com/icon/free/png-256/student-classroom-bench-tired-bore-rest-resting-46451.png"
-            )
-            if i+1000 < len(stat_str):
-                embed.add_field(name="Stat", value=f"`{stat_str[i:i+1000]}`")
+        for member in role.members: # Pour chaque eleve avec le role
+            if member.nick is None: # Si il n  pas de surnom pour le serv
+                name = member.name
             else:
-                embed.add_field(name="Stat", value=f"`{stat_str[i:]}`")
-            await ctx.send(embed=embed)
-            i += 1000
+                name = member.nick
+            eleve_dic[name] = member.id # le nom de l'eleve en key pour le tri et son id en value
+
+        head_str = "".join([f"<th>{appel}</th>" for appel in appel_dic.keys()]) # tete du tableau
+        body_str = ""
+        for nom in sorted(eleve_dic):
+            elv_id = eleve_dic[nom] # on prend l'id de l eleve
+            base = f"<tr><td>{nom}</td>" # premiere colonne nom
+            for cours, present in appel_dic.items():
+                if elv_id in present: # Il est present
+                    base += """
+                    <td class="center">
+                        <i class="material-icons green-text">check_box</i>
+                    </td>
+                    """
+                else: # Il n'est pas present
+                    base += """
+                    <td class="center">
+                        <i class="material-icons red-text">indeterminate_check_box</i>
+                    </td>
+                """
+            body_str += base + "</tr>" # on ferme les balises
+        await msg.edit(content=":gear: Generate HTML :page_with_curl:")
+        imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body = body_str), 'classe.jpg')
+        await msg.edit(content=":gear:Send Image :arrow_up:")
+        with open('classe.jpg', 'rb') as f:
+            picture = discord.File(f)
+            await ctx.send(file=picture)
+        await msg.delete()
