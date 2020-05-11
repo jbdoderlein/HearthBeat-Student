@@ -3,10 +3,7 @@ import discord
 from discord.ext import commands
 from cogs.HearthBeat import HearthBeat
 import argparse
-import logging
-import imgkit
 
-logging.basicConfig(filename='example.log', level=logging.DEBUG)
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-t", "--token", required=True, help="bot token")
@@ -40,15 +37,6 @@ async def on_ready():
     activity = discord.Activity(name="la classe",
                                 type=discord.ActivityType.watching)
     await bot.change_presence(activity=activity)
-
-    logging.debug("#"*16)
-    try:
-        imgkit.from_string("Salut", 'test.jpg')
-        with open('test.jpg', 'rb') as f:
-            picture = discord.File(f)
-        logging.debug("SUCCESS FILE OPEN WITH ALL WE NEED")
-    except Exception as e:
-        logging.debug(e)
 
 
 @bot.command(hidden=True)

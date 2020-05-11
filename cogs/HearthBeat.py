@@ -31,6 +31,7 @@ def is_admin():
 class HearthBeat(commands.Cog):
     def __init__(self, bot, host, username, password):
         self.bot = bot
+        self.host = host
         if username is not None:
             client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://{username}:{password}@{host}".format(
                 username=username,
@@ -134,7 +135,10 @@ class HearthBeat(commands.Cog):
                 """
             body_str += base + "</tr>" # on ferme les balises
         await msg.edit(content=":gear: Generate HTML :page_with_curl:")
-        imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body = body_str), 'classe.jpg')
+        if self.host == "localhost":
+            imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body = body_str), 'classe.jpg', options={"xvfb": ""})
+        else:
+            imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), 'classe.jpg')
         await msg.edit(content=":gear:Send Image :arrow_up:")
         with open('classe.jpg', 'rb') as f:
             picture = discord.File(f)
