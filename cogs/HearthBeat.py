@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 import motor.motor_asyncio
 import asyncio
+import typing
 
 HTML_TEMPLATE = """
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -98,15 +99,17 @@ class HearthBeat(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(pass_context=True, no_pm=True, hidden=True)
-    async def classe(self, ctx, *, role: discord.Role):
+    async def classe(self, ctx, role: discord.Role, matiere: typing.Optional[str] = 'All'):
         """Affiche un tableau avec les présence"""
+        print(role, matiere)
         msg = await ctx.send(":gear: Start to process data :floppy_disk:")
         appel_dic = {} # Dico avec les appels, et les présents
         eleve_dic = {} # dico index sur le nom pour le tri alphabétique qui contient l'id
         async for document in self.db.appels.find({}):  # Pour tous les appels
-            date = document['date'] # date du cours
-            appel_dic[f"{document['name']} du {date.day}/{date.month}, {date.hour}:{date.minute}"] = document['present']
-            # Ajout avec comme index le str d affichage et en value la liste des présents
+            if matiere=="All" or matiere==document['name']:
+                date = document['date'] # date du cours
+                appel_dic[f"{document['name']} du {date.day}/{date.month}, {date.hour}:{date.minute}"] = document['present']
+                # Ajout avec comme index le str d affichage et en value la liste des présents
 
         for member in role.members: # Pour chaque eleve avec le role
             if member.nick is None: # Si il n  pas de surnom pour le serv
@@ -138,9 +141,9 @@ class HearthBeat(commands.Cog):
             body_str += base + "</tr>" # on ferme les balises
         await msg.edit(content=":gear: Generate HTML :page_with_curl:")
         if self.host == "localhost":
-            imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body = body_str), 'classe.jpg', options={"xvfb": ""})
+            imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body = body_str), 'classe.jpg', options={"xvfb": "", "zoom": 2.4})
         else:
-            imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), 'classe.jpg')
+            imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), 'classe.jpg', options={"zoom": 2.4})
         await msg.edit(content=":gear:Send Image :arrow_up:")
         with open('classe.jpg', 'rb') as f:
             picture = discord.File(f)
