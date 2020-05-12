@@ -82,12 +82,12 @@ class HearthBeat(commands.Cog):
         list_appel = []
         type_appel = {}
         async for document in self.db.appels.find({}):
-            if document['channel'] not in type_appel:
-                type_appel[document['channel']] = [0, 0]
-            type_appel[document['channel']][1] += 1
+            if document['name'] not in type_appel:
+                type_appel[document['name']] = [0, 0]
+            type_appel[document['name']][1] += 1
             if member.id in document['present']:
-                list_appel.append(f"Cours le {document['date'].day}/{document['date'].month} dans {document['channel']}")
-                type_appel[document['channel']][0] += 1
+                list_appel.append(f"{document['name']} le {document['date'].day}/{document['date'].month} dans {document['channel']}")
+                type_appel[document['name']][0] += 1
 
         embed.add_field(name="Nombre de cours", value=str(len(list_appel)))
         embed.add_field(name="Liste des cours : ", value="`"+"\n".join(list_appel)+"`")
@@ -113,6 +113,8 @@ class HearthBeat(commands.Cog):
                 name = member.name
             else:
                 name = member.nick
+            if len(name.split(" ")) == 2:
+                name = " ".join(name.split(" ")[::-1])
             eleve_dic[name] = member.id # le nom de l'eleve en key pour le tri et son id en value
 
         head_str = "".join([f"<th>{appel}</th>" for appel in appel_dic.keys()]) # tete du tableau
