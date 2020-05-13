@@ -23,11 +23,13 @@ HTML_TEMPLATE = """
         </tbody>
       </table>"""
 
+
 def is_admin():
     async def predicate(ctx):
         return bool((int(ctx.author.permissions) >> 3) & 1)
 
     return commands.check(predicate)
+
 
 class HearthBeat(commands.Cog):
     def __init__(self, bot, host, username, password):
@@ -46,7 +48,6 @@ class HearthBeat(commands.Cog):
             ))
             self.db = client.hearthbeat
 
-
     @commands.command(pass_context=True, no_pm=True, hidden=True)
     async def appel(self, ctx, *, name: str):
         """Fait l'appel"""
@@ -60,7 +61,8 @@ class HearthBeat(commands.Cog):
                 'channel': voice_channel.name,
             }
             result = await self.db.appels.insert_one(appel)
-            await ctx.send(f"Ajout de l'appel à la base de données, `{len(appel['present'])}` participants le `{appel['date']}` dans `{appel['channel']}`")
+            await ctx.send(
+                f"Ajout de l'appel à la base de données, `{len(appel['present'])}` participants le `{appel['date']}` dans `{appel['channel']}`")
         else:
             await ctx.send("Il faut se connecter à un vocal")
 
@@ -87,61 +89,64 @@ class HearthBeat(commands.Cog):
                 type_appel[document['name']] = [0, 0]
             type_appel[document['name']][1] += 1
             if member.id in document['present']:
-                list_appel.append(f"{document['name']} le {document['date'].day}/{document['date'].month} dans {document['channel']}")
+                list_appel.append(
+                    f"{document['name']} le {document['date'].day}/{document['date'].month} dans {document['channel']}")
                 type_appel[document['name']][0] += 1
 
         embed.add_field(name="Nombre de cours", value=str(len(list_appel)))
-        embed.add_field(name="Liste des cours : ", value="`"+"\n".join(list_appel)+"`")
+        embed.add_field(name="Liste des cours : ", value="`" + "\n".join(list_appel) + "`")
 
-        type_str = "`"+"\n".join([f"{a} : {i[0]}/{i[1]}" for a, i in type_appel.items()])+"`"
+        type_str = "`" + "\n".join([f"{a} : {i[0]}/{i[1]}" for a, i in type_appel.items()]) + "`"
         embed.add_field(name="Moyenne sur les cours : ", value=type_str)
 
         await ctx.send(embed=embed)
 
     @commands.command(pass_context=True, no_pm=True, hidden=True)
-    async def classe(self, ctx, role: discord.Role, matiere: typing.Optional[str] = 'All'):
+    async def classe(self, ctx, role: discord.Role, matiere: typing.Greedy[str] = 'All'):
         """Affiche un tableau avec les présence"""
         print(role, matiere)
         msg = await ctx.send(":gear: Start to process data :floppy_disk:")
-        appel_dic = {} # Dico avec les appels, et les présents
-        eleve_dic = {} # dico index sur le nom pour le tri alphabétique qui contient l'id
+        appel_dic = {}  # Dico avec les appels, et les présents
+        eleve_dic = {}  # dico index sur le nom pour le tri alphabétique qui contient l'id
         async for document in self.db.appels.find({}):  # Pour tous les appels
-            if matiere=="All" or matiere==document['name']:
-                date = document['date'] # date du cours
-                appel_dic[f"{document['name']} du {date.day}/{date.month}, {date.hour}:{date.minute}"] = document['present']
+            if matiere == "All" or matiere in document['name']:
+                date = document['date']  # date du cours
+                appel_dic[f"{document['name']} du {date.day}/{date.month}, {date.hour}:{date.minute}"] = document[
+                    'present']
                 # Ajout avec comme index le str d affichage et en value la liste des présents
 
-        for member in role.members: # Pour chaque eleve avec le role
-            if member.nick is None: # Si il n  pas de surnom pour le serv
+        for member in role.members:  # Pour chaque eleve avec le role
+            if member.nick is None:  # Si il n  pas de surnom pour le serv
                 name = member.name
             else:
                 name = member.nick
             if len(name.split(" ")) == 2:
                 name = " ".join(name.split(" ")[::-1])
-            eleve_dic[name] = member.id # le nom de l'eleve en key pour le tri et son id en value
+            eleve_dic[name] = member.id  # le nom de l'eleve en key pour le tri et son id en value
 
-        head_str = "".join([f"<th>{appel}</th>" for appel in appel_dic.keys()]) # tete du tableau
+        head_str = "".join([f"<th>{appel}</th>" for appel in appel_dic.keys()])  # tete du tableau
         body_str = ""
         for nom in sorted(eleve_dic):
-            elv_id = eleve_dic[nom] # on prend l'id de l eleve
-            base = f"<tr><td>{nom}</td>" # premiere colonne nom
+            elv_id = eleve_dic[nom]  # on prend l'id de l eleve
+            base = f"<tr><td>{nom}</td>"  # premiere colonne nom
             for cours, present in appel_dic.items():
-                if elv_id in present: # Il est present
+                if elv_id in present:  # Il est present
                     base += """
                     <td class="center">
                         <i class="material-icons green-text">check_box</i>
                     </td>
                     """
-                else: # Il n'est pas present
+                else:  # Il n'est pas present
                     base += """
                     <td class="center">
                         <i class="material-icons red-text">indeterminate_check_box</i>
                     </td>
                 """
-            body_str += base + "</tr>" # on ferme les balises
+            body_str += base + "</tr>"  # on ferme les balises
         await msg.edit(content=":gear: Generate HTML :page_with_curl:")
         if self.host == "localhost":
-            imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body = body_str), 'classe.jpg', options={"xvfb": "", "zoom": 2.4})
+            imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), 'classe.jpg',
+                               options={"xvfb": "", "zoom": 2.4})
         else:
             imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), 'classe.jpg', options={"zoom": 2.4})
         await msg.edit(content=":gear:Send Image :arrow_up:")
