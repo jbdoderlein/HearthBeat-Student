@@ -102,14 +102,13 @@ class HearthBeat(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(pass_context=True, no_pm=True, hidden=True)
-    async def classe(self, ctx, role: discord.Role, matiere: typing.Greedy[str] = 'All'):
+    async def classe(self, ctx, role: discord.Role, *, matiere: typing.Optional[str] = 'All'):
         """Affiche un tableau avec les présence"""
-        print(role, matiere)
         msg = await ctx.send(":gear: Start to process data :floppy_disk:")
         appel_dic = {}  # Dico avec les appels, et les présents
         eleve_dic = {}  # dico index sur le nom pour le tri alphabétique qui contient l'id
         async for document in self.db.appels.find({}):  # Pour tous les appels
-            if matiere == "All" or matiere in document['name']:
+            if matiere == "All" or document['name'] in matiere.split(" "):
                 date = document['date']  # date du cours
                 appel_dic[f"{document['name']} du {date.day}/{date.month}, {date.hour}:{date.minute}"] = document[
                     'present']
