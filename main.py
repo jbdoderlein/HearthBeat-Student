@@ -38,6 +38,18 @@ async def on_ready():
                                 type=discord.ActivityType.watching)
     await bot.change_presence(activity=activity)
 
+@bot.event
+async def on_command_error(ctx, error):
+    message = ""
+    if isinstance(error, commands.BotMissingPermissions):
+        message = "Bot need more permissions"
+    elif isinstance(error, commands.BadArgument):
+        message = "Mauvais argument (le role ou l'élève n'existe pas ?)"
+    else:
+        message = f"Fatal error : `{error}`"
+    await ctx.send(message)
+
+
 
 @bot.command(hidden=True)
 @is_dev()

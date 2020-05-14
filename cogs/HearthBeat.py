@@ -5,6 +5,7 @@ from discord.ext import commands
 import motor.motor_asyncio
 import asyncio
 import typing
+import bson
 
 HTML_TEMPLATE = """
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -59,6 +60,7 @@ class HearthBeat(commands.Cog):
                 'date': datetime.datetime.now(),
                 'present': [member.id for member in voice_channel.members],
                 'channel': voice_channel.name,
+                'guild': str(ctx.guild.id)
             }
             result = await self.db.appels.insert_one(appel)
             await ctx.send(
@@ -84,7 +86,8 @@ class HearthBeat(commands.Cog):
 
         list_appel = []
         type_appel = {}
-        async for document in self.db.appels.find({}):
+        async for document in self.db.appels.find({'guild': str(ctx.guild.id)}):
+
             if document['name'] not in type_appel:
                 type_appel[document['name']] = [0, 0]
             type_appel[document['name']][1] += 1
@@ -107,7 +110,7 @@ class HearthBeat(commands.Cog):
         msg = await ctx.send(":gear: Start to process data :floppy_disk:")
         appel_dic = {}  # Dico avec les appels, et les présents
         eleve_dic = {}  # dico index sur le nom pour le tri alphabétique qui contient l'id
-        async for document in self.db.appels.find({}):  # Pour tous les appels
+        async for document in self.db.appels.find({'guild': str(ctx.guild.id)}):  # Pour tous les appels
             if matiere == "All" or document['name'] in matiere.split(" "):
                 date = document['date']  # date du cours
                 appel_dic[f"{document['name']} du {date.day}/{date.month}, {date.hour}:{date.minute}"] = document[
