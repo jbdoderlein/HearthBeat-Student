@@ -1,7 +1,7 @@
 import datetime
 import imgkit
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import motor.motor_asyncio
 import asyncio
 import typing
@@ -49,9 +49,11 @@ class HearthBeat(commands.Cog):
             ))
             self.db = client.hearthbeat
 
-    @commands.command(pass_context=True, no_pm=True, hidden=True)
+        self.screenchecker.start()
+
+    @commands.command(pass_context=True, no_pm=True)
     async def appel(self, ctx, *, name: str):
-        """Fait l'appel"""
+        """Fait l'appel, syntaxe : `?appel *matiere*`"""
         if ctx.author.voice is not None:
             voice_channel = ctx.author.voice.channel
             print(voice_channel.members)
@@ -68,9 +70,9 @@ class HearthBeat(commands.Cog):
         else:
             await ctx.send("Il faut se connecter à un vocal")
 
-    @commands.command(pass_context=True, no_pm=True, hidden=True)
+    @commands.command(pass_context=True, no_pm=True)
     async def info(self, ctx, *, member: discord.Member):
-        """Affiche les infos a propos d'un utilisateur"""
+        """Affiche les infos a propos d'un eleve"""
         embed = discord.Embed(
             type="rich",
             color=discord.Colour.blue(),
@@ -104,7 +106,7 @@ class HearthBeat(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(pass_context=True, no_pm=True, hidden=True)
+    @commands.command(pass_context=True, no_pm=True)
     async def classe(self, ctx, role: discord.Role, *, matiere: typing.Optional[str] = 'All'):
         """Affiche un tableau avec les présence"""
         msg = await ctx.send(":gear: Start to process data :floppy_disk:")
@@ -156,3 +158,24 @@ class HearthBeat(commands.Cog):
             picture = discord.File(f)
             await ctx.send(file=picture)
         await msg.delete()
+
+    @commands.command(pass_context=True, no_pm=True, hidden=True)
+    async def screen(self, ctx, duration: int, *, name: str):
+        await ctx.send(f"Start {name} screenshot recording session in `{ctx.channel.name}` for `{duration}` minutes")
+        self.bot.screenshot['channel'] = ctx.channel.id
+        self.bot.screenshot['duration'] = duration
+        self.bot.screenshot['start_time'] = datetime.datetime.now()
+        self.bot.screenshot['label'] = name
+        self.bot.screenshot['ctx'] = ctx
+
+    @tasks.loop(seconds=10.0)
+    async def screenchecker(self):
+        if self.bot.screenshot['channel'] is not None:
+            if not self.bot.screenshot['start_time'].timestamp() + 60 * self.bot.screenshot['duration'] > datetime.datetime.now().timestamp():
+                await self.bot.screenshot['ctx'].send("La session a pris fin")
+                self.bot.screenshot = {
+                    'channel': None,
+                    'start_time': None,
+                    'duration': None,
+                    'label': "Maths"
+                }
