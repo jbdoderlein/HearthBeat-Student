@@ -72,7 +72,7 @@ async def ping(ctx):
 async def _eval(ctx, ev: str):
     """Not for you !"""
     try:
-        a = eval(ctx.message.content.replace('!!eval ', ''))
+        a = eval(ctx.message.content.replace('?eval ', ''))
         await ctx.send('Input : `' + ev + '`\nOutput : `' + str(a) + '`')
     except Exception as e:
         await ctx.send('Input : `' + ev + '`\nOutput (error) : `' + str(e) + '`')
@@ -100,7 +100,7 @@ async def on_message(message):
                     }
                     async with aiohttp.ClientSession() as session:
                         async with session.post('https://rediffs-mpsi3.fr/ajoutphoto.php', data=param) as r:
-                            await message.channel.send("Capture d'écran enregistrée dans la base de données")
+                            await message.add_reaction("\N{WHITE HEAVY CHECK MARK}")
                 else:
                     await message.channel.send("Pas d'image dans le message")
 

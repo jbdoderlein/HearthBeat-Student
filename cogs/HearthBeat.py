@@ -168,6 +168,16 @@ class HearthBeat(commands.Cog):
         self.bot.screenshot['label'] = name
         self.bot.screenshot['ctx'] = ctx
 
+    @commands.command(pass_context=True, no_pm=True, hidden=True)
+    async def screenstop(self, ctx):
+        await ctx.send("La session a pris fin")
+        self.bot.screenshot = {
+            'channel': None,
+            'start_time': None,
+            'duration': None,
+            'label': "Maths"
+        }
+
     @tasks.loop(seconds=10.0)
     async def screenchecker(self):
         if self.bot.screenshot['channel'] is not None:
