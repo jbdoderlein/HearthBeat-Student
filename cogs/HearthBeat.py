@@ -130,7 +130,9 @@ class HearthBeat(commands.Cog):
 
         head_str = "".join([f"<th>{appel}</th>" for appel in appel_dic.keys()])  # tete du tableau
         body_str = ""
+        elevecount = 0
         for nom in sorted(eleve_dic):
+            elevecount += 1
             elv_id = eleve_dic[nom]  # on prend l'id de l eleve
             base = f"<tr><td>{nom}</td>"  # premiere colonne nom
             for cours, present in appel_dic.items():
@@ -189,3 +191,61 @@ class HearthBeat(commands.Cog):
                     'duration': None,
                     'label': "Maths"
                 }
+
+    @commands.command(pass_context=True, no_pm=True)
+    async def apple(self, ctx, role: discord.Role, *, matiere: typing.Optional[str] = 'All'):
+        """Affiche un tableau avec les présence (en mieux)"""
+        msg = await ctx.send(":gear: Start to process data :floppy_disk:")
+        appel_dic = {}  # Dico avec les appels, et les présents
+        eleve_dic = {}  # dico index sur le nom pour le tri alphabétique qui contient l'id
+        async for document in self.db.appels.find({'guild': str(ctx.guild.id)}):  # Pour tous les appels
+            if matiere == "All" or document['name'] in matiere.split(" "):
+                date = document['date']  # date du cours
+                appel_dic[f"{document['name']} du {date.day}/{date.month}, {date.hour}:{date.minute}"] = document[
+                    'present']
+                # Ajout avec comme index le str d affichage et en value la liste des présents
+
+        for member in role.members:  # Pour chaque eleve avec le role
+            if member.nick is None:  # Si il n  pas de surnom pour le serv
+                name = member.name
+            else:
+                name = member.nick
+            if len(name.split(" ")) == 2:
+                name = " ".join(name.split(" ")[::-1])
+            eleve_dic[name] = member.id  # le nom de l'eleve en key pour le tri et son id en value
+
+        head_str = "".join([f"<th>{appel}</th>" for appel in appel_dic.keys()])  # tete du tableau
+        body_str = ""
+        elevecount = 0
+        for nom in sorted(eleve_dic):
+            elevecount += 1
+            elv_id = eleve_dic[nom]  # on prend l'id de l eleve
+            base = f"<tr><td>{nom}</td>"  # premiere colonne nom
+            for cours, present in appel_dic.items():
+                if elv_id in present:  # Il est present
+                    base += """
+                        <td class="center">
+                            <i class="material-icons green-text">check_box</i>
+                        </td>
+                        """
+                else:  # Il n'est pas present
+                    base += """
+                        <td class="center">
+                            <i class="material-icons red-text">indeterminate_check_box</i>
+                        </td>
+                    """
+            body_str += base + "</tr>"  # on ferme les balises
+
+            if elevecount > 5:
+                if self.host == "localhost":
+                    imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), 'classe.jpg',
+                                       options={"xvfb": "", "zoom": 2.4})
+                else:
+                    imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), 'classe.jpg', options={"zoom": 2.4})
+                await msg.edit(content=":gear:Send Image :arrow_up:")
+                with open('classe.jpg', 'rb') as f:
+                    picture = discord.File(f)
+                    await ctx.send(file=picture)
+                elevecount = 0
+                body_str = ""
+        await msg.delete()
