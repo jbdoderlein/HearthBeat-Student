@@ -1,0 +1,6 @@
+asyncpg
+discord.py
+imgkit
+discord
+aiohttp
+Flask
