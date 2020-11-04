@@ -9,12 +9,12 @@ def index():
 
 @app.route('/user/<int:guild_id>/<int:user_id>')
 def get_user(guild_id, user_id):
-    info = requests.get(f"http://localhost:7500/user/{guild_id}/{user_id}").json()
+    info = requests.get(f"http://localhost:8887/user/{guild_id}/{user_id}").json()
     return render_template('user.html', user_id=user_id, **info)
 
 @app.route('/users/<int:guild_id>')
 def get_users(guild_id):
-    info = requests.get(f"http://localhost:7500/users/{guild_id}").json()
+    info = requests.get(f"http://localhost:8887/users/{guild_id}").json()
     return render_template('users.html', guild_id=guild_id, info=info)
 
 """ TODO

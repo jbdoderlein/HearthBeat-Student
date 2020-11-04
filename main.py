@@ -124,8 +124,8 @@ async def web_service():
     app.add_routes(routes)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, host='127.0.0.1', port=7500, reuse_address=True)
-    print("Starting http server port : ", 7500)
+    site = web.TCPSite(runner, host='127.0.0.1', port=8887, reuse_address=True)
+    print("Starting http server port : ", 8887)
     await site.start()
 
 
