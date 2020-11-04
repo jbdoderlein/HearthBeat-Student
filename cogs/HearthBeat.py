@@ -42,6 +42,7 @@ class HearthBeat(commands.Cog):
         self.database = database
         self.connector = None
 
+
     async def init(self):
         """"
         Init the Postgres connector
@@ -50,7 +51,7 @@ class HearthBeat(commands.Cog):
         self.connector = await asyncpg.connect(user=self.username, password=self.password,
                                           database=self.database, host=self.host)
 
-    async def get_info(self,guild_id,user_id):
+    async def get_info(self, guild_id, user_id):
         """
 
         :param guild_id:
@@ -134,6 +135,7 @@ class HearthBeat(commands.Cog):
         eleve_dic = {}  # dico index sur le nom pour le tri alphabétique qui contient l'id
         appels = await self.connector.fetch('SELECT * FROM appel WHERE guild=$1', str(ctx.guild.id))
         for appel in appels:
+            print("nom", appel['name'])
             if matiere == "All" or appel['name'] in matiere.split(" "):
                 date = appel['date']  # date du cours
                 present = json.loads(appel['present'])
@@ -149,22 +151,19 @@ class HearthBeat(commands.Cog):
             if len(name.split(" ")) == 2:
                 name = " ".join(name.split(" ")[::-1])
             eleve_dic[name] = member.id  # le nom de l'eleve en key pour le tri et son id en value
-
+        print(appel_dic)
         head_str = "".join([f"<th>{appel}</th>" for appel in appel_dic.keys()])  # tete du tableau
         body_str = ""
         elevecount = 0
         elevecount2 = 0
         elevetotal = len(eleve_dic.keys())
         for nom in sorted(eleve_dic):
-            print("here1")
             elevecount += 1
             elevecount2 += 1
             elv_id = eleve_dic[nom]  # on prend l'id de l eleve
             base = f"<tr><td>{nom}</td>"  # premiere colonne nom
             for cours, present in appel_dic.items():
-                print("here2")
                 if elv_id in present:  # Il est present
-                    print("here3")
                     base += """
                         <td class="center">
                             <i class="material-icons green-text">check_box</i>
@@ -179,7 +178,6 @@ class HearthBeat(commands.Cog):
             body_str += base + "</tr>"  # on ferme les balises
 
             if elevecount > 5 or elevetotal == elevecount2:
-                print("on est la")
                 img = imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), False, options={"zoom": 2.4})
                 await msg.edit(content=":gear:Send Image :arrow_up:")
                 picture = discord.File(io.BytesIO(img), filename="heathbeat.jpg")
@@ -187,4 +185,4 @@ class HearthBeat(commands.Cog):
                 elevecount = 0
                 body_str = ""
         await msg.delete()
-        msg = await ctx.send(":gear: WIP : Lien pour acceder a la version numérique :floppy_disk:")
+        msg = await ctx.send(f":gear: WIP : Lien pour acceder a la classe : http://site.com/users/{ctx.guild.id} :floppy_disk:")

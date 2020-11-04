@@ -83,7 +83,7 @@ async def shutdown(ctx):
 
 
 
-async def testte():
+async def web_service():
     routes = web.RouteTableDef()
 
     @routes.get('/')
@@ -109,6 +109,17 @@ async def testte():
             'data': data
         })
 
+    @routes.get('/users/{guild}')
+    async def get_users(request):
+        # Trouver le memebre et les info discord
+        guild_id = unquote(request.match_info['guild'])
+        guild = bot.get_guild(int(guild_id))
+        if not guild: return web.Response(text="No guild")
+        members = guild.members
+        if not members: return web.Response(text="No members")
+        # Avoir les info hearthbeat
+        return web.json_response({member.id: {'name': member.name, 'avatar': member.avatar} for member in members})
+
     app = web.Application()
     app.add_routes(routes)
     runner = web.AppRunner(app)
@@ -119,7 +130,7 @@ async def testte():
 
 
 try:
-    bot.loop.create_task(testte())
+    bot.loop.create_task(web_service())
     pass
 except Exception as e:
     print(e)

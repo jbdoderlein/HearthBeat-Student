@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <title>Hearth Beat</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet" />
+  <style>
+    nav{
+  background-color: #311b92 !important;
+}
+
+.chart-container {
+  position: relative;
+  margin: auto;
+
+}
+.collapsible{
+  width: 100%!important;
+}
+  </style>
+</head>
+
+<body>
+  <nav>
+    <div class="nav-wrapper">
+      <a href="#" class="brand-logo center">Hearth Beat</a>
+    </div>
+  </nav>
+
+  <div class="container">
+      <div class="row">
+          {% for id, data in info.items() %}
+        <div class="col s4">
+        <div class="card-panel grey lighten-5 z-depth-1">
+          <div class="row valign-wrapper">
+            <div class="col s3">
+                {% if not data['avatar'] %}
+                    <img src="https://cdn.discordapp.com/avatars/708012465954226208/090f7f4e5bcaeeddec21d7da86fa237c.webp" alt="" class="circle responsive-img">
+                {%else%}
+                    <img src="https://cdn.discordapp.com/avatars/{{ id }}/{{ data['avatar'] }}.webp" alt="" class="circle responsive-img">
+                {%endif%}
+            </div>
+            <div class="col s9">
+                <h6>{{ data['name']|truncate(15) }}<a href="{{ url_for('get_user', guild_id=guild_id, user_id=id)}}"><i class="material-icons deep-purple-text right">arrow_forward</i></a></h6>
+            </div>
+          </div>
+        </div>
+      </div>
+          {% endfor %}
+
+
+    </div>
+  </div>
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
