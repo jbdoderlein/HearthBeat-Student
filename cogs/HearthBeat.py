@@ -185,4 +185,4 @@ class HearthBeat(commands.Cog):
                 elevecount = 0
                 body_str = ""
         await msg.delete()
-        msg = await ctx.send(f":gear: WIP : Lien pour acceder a la classe : http://site.com/users/{ctx.guild.id} :floppy_disk:")
+        msg = await ctx.send(f":gear: WIP : Lien pour acceder a la classe : https://hearthbeatstudent.tk/users/{ctx.guild.id} :floppy_disk:")
