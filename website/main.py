@@ -23,3 +23,6 @@ def get_users(guild_id, appel_id):
     data = requests.get(f"http://localhost:7500/appel/{guild_id}/{appel_id}").json()
     return render_template('appel.html', head=data['head'], body=data['body'])
 """
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0')
