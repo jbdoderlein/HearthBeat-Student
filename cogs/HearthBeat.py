@@ -2,10 +2,12 @@ import datetime
 import imgkit
 import discord
 from discord.ext import commands, tasks
-import motor.motor_asyncio
-import asyncio
+import asyncpg
 import typing
-import bson
+import json
+import io
+import humanize
+humanize.i18n.activate("fr_FR")
 
 HTML_TEMPLATE = """
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -28,45 +30,64 @@ HTML_TEMPLATE = """
 def is_admin():
     async def predicate(ctx):
         return bool((int(ctx.author.permissions) >> 3) & 1)
-
     return commands.check(predicate)
 
 
 class HearthBeat(commands.Cog):
-    def __init__(self, bot, host, username, password):
+    def __init__(self, bot, host, database, username, password):
         self.bot = bot
         self.host = host
-        if username is not None:
-            client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://{username}:{password}@{host}".format(
-                username=username,
-                password=password,
-                host=host
-            ))
-            self.db = client.hearthbeat
-        else:
-            client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://{host}".format(
-                host=host
-            ))
-            self.db = client.hearthbeat
+        self.username = username
+        self.password = password
+        self.database = database
+        self.connector = None
 
-        self.screenchecker.start()
+
+    async def init(self):
+        """"
+        Init the Postgres connector
+        :return: None
+        """
+        self.connector = await asyncpg.connect(user=self.username, password=self.password,
+                                          database=self.database, host=self.host)
+
+    async def get_info(self, guild_id, user_id):
+        """
+
+        :param guild_id:
+        :param user_id:
+        :return: dict
+        """
+        appels = await self.connector.fetch('SELECT * FROM appel WHERE guild=$1', str(guild_id))
+        data = {}
+        for appel in appels:
+            if not appel['name'] in data:
+                data[appel['name']] = {'total': 0, 'present': []}
+            data[appel['name']]['total'] += 1
+            if int(user_id) in json.loads(appel['present']):
+                data[appel['name']]['present'].append(
+                    f"{appel['name']}, {humanize.naturaldate(appel['date'])} dans {appel['channel']}")
+        return data
+
 
     @commands.command(pass_context=True, no_pm=True)
     async def appel(self, ctx, *, name: str):
         """Fait l'appel, syntaxe : `?appel *matiere*`"""
         if ctx.author.voice is not None:
             voice_channel = ctx.author.voice.channel
-            print(voice_channel.members)
+            present = [k for k in voice_channel.voice_states.keys()]
             appel = {
                 'name': name,
                 'date': datetime.datetime.now(),
-                'present': [member.id for member in voice_channel.members],
+                'present': json.dumps(present),
                 'channel': voice_channel.name,
                 'guild': str(ctx.guild.id)
             }
-            result = await self.db.appels.insert_one(appel)
+            await self.connector.execute(
+                'INSERT INTO appel(name, date, present, channel, guild) VALUES ($1, $2, $3, $4, $5);',
+                *appel.values())
             await ctx.send(
-                f"Ajout de l'appel à la base de données, `{len(appel['present'])}` participants le `{appel['date']}` dans `{appel['channel']}`")
+                f"Ajout de l'appel à la base de données, `{len(present)}` participants le `{appel['date']}` dans `{appel['channel']}`")
         else:
             await ctx.send("Il faut se connecter à un vocal")
 
@@ -108,103 +129,20 @@ class HearthBeat(commands.Cog):
 
     @commands.command(pass_context=True, no_pm=True)
     async def classe(self, ctx, role: discord.Role, *, matiere: typing.Optional[str] = 'All'):
-        """Affiche un tableau avec les présence"""
-        msg = await ctx.send(":gear: Start to process data :floppy_disk:")
-        appel_dic = {}  # Dico avec les appels, et les présents
-        eleve_dic = {}  # dico index sur le nom pour le tri alphabétique qui contient l'id
-        async for document in self.db.appels.find({'guild': str(ctx.guild.id)}):  # Pour tous les appels
-            if matiere == "All" or document['name'] in matiere.split(" "):
-                date = document['date']  # date du cours
-                appel_dic[f"{document['name']} du {date.day}/{date.month}, {date.hour}:{date.minute}"] = document[
-                    'present']
-                # Ajout avec comme index le str d affichage et en value la liste des présents
-
-        for member in role.members:  # Pour chaque eleve avec le role
-            if member.nick is None:  # Si il n  pas de surnom pour le serv
-                name = member.name
-            else:
-                name = member.nick
-            if len(name.split(" ")) == 2:
-                name = " ".join(name.split(" ")[::-1])
-            eleve_dic[name] = member.id  # le nom de l'eleve en key pour le tri et son id en value
-
-        head_str = "".join([f"<th>{appel}</th>" for appel in appel_dic.keys()])  # tete du tableau
-        body_str = ""
-        elevecount = 0
-        for nom in sorted(eleve_dic):
-            elevecount += 1
-            elv_id = eleve_dic[nom]  # on prend l'id de l eleve
-            base = f"<tr><td>{nom}</td>"  # premiere colonne nom
-            for cours, present in appel_dic.items():
-                if elv_id in present:  # Il est present
-                    base += """
-                    <td class="center">
-                        <i class="material-icons green-text">check_box</i>
-                    </td>
-                    """
-                else:  # Il n'est pas present
-                    base += """
-                    <td class="center">
-                        <i class="material-icons red-text">indeterminate_check_box</i>
-                    </td>
-                """
-            body_str += base + "</tr>"  # on ferme les balises
-        await msg.edit(content=":gear: Generate HTML :page_with_curl:")
-        if self.host == "localhost":
-            imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), 'classe.jpg',
-                               options={"xvfb": "", "zoom": 2.4})
-        else:
-            imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), 'classe.jpg', options={"zoom": 2.4})
-        await msg.edit(content=":gear:Send Image :arrow_up:")
-        with open('classe.jpg', 'rb') as f:
-            picture = discord.File(f)
-            await ctx.send(file=picture)
-        await msg.delete()
-
-    @commands.command(pass_context=True, no_pm=True, hidden=True)
-    async def screen(self, ctx, duration: int, *, name: str):
-        await ctx.send(f"Start {name} screenshot recording session in `{ctx.channel.name}` for `{duration}` minutes")
-        self.bot.screenshot['channel'] = ctx.channel.id
-        self.bot.screenshot['duration'] = duration
-        self.bot.screenshot['start_time'] = datetime.datetime.now()
-        self.bot.screenshot['label'] = name
-        self.bot.screenshot['ctx'] = ctx
-
-    @commands.command(pass_context=True, no_pm=True, hidden=True)
-    async def screenstop(self, ctx):
-        await ctx.send("La session a pris fin")
-        self.bot.screenshot = {
-            'channel': None,
-            'start_time': None,
-            'duration': None,
-            'label': "Maths"
-        }
-
-    @tasks.loop(seconds=10.0)
-    async def screenchecker(self):
-        if self.bot.screenshot['channel'] is not None:
-            if not self.bot.screenshot['start_time'].timestamp() + 60 * self.bot.screenshot['duration'] > datetime.datetime.now().timestamp():
-                await self.bot.screenshot['ctx'].send("La session a pris fin")
-                self.bot.screenshot = {
-                    'channel': None,
-                    'start_time': None,
-                    'duration': None,
-                    'label': "Maths"
-                }
-
-    @commands.command(pass_context=True, no_pm=True)
-    async def apple(self, ctx, role: discord.Role, *, matiere: typing.Optional[str] = 'All'):
         """Affiche un tableau avec les présence (en mieux)"""
         msg = await ctx.send(":gear: Start to process data :floppy_disk:")
         appel_dic = {}  # Dico avec les appels, et les présents
         eleve_dic = {}  # dico index sur le nom pour le tri alphabétique qui contient l'id
-        async for document in self.db.appels.find({'guild': str(ctx.guild.id)}):  # Pour tous les appels
-            if matiere == "All" or document['name'] in matiere.split(" "):
-                date = document['date']  # date du cours
-                appel_dic[f"{document['name']} du {date.day}/{date.month}, {date.hour}:{date.minute}"] = document[
-                    'present']
+        appels = await self.connector.fetch('SELECT * FROM appel WHERE guild=$1', str(ctx.guild.id))
+        for appel in appels:
+            print("nom", appel['name'])
+            if matiere == "All" or appel['name'] in matiere.split(" "):
+                date = appel['date']  # date du cours
+                present = json.loads(appel['present'])
+                appel_dic[f"{appel['name']} du {date.day}/{date.month}, {date.hour}:{date.minute}"] = present
                 # Ajout avec comme index le str d affichage et en value la liste des présents
 
+        await ctx.guild.chunk()
         for member in role.members:  # Pour chaque eleve avec le role
             if member.nick is None:  # Si il n  pas de surnom pour le serv
                 name = member.name
@@ -213,12 +151,15 @@ class HearthBeat(commands.Cog):
             if len(name.split(" ")) == 2:
                 name = " ".join(name.split(" ")[::-1])
             eleve_dic[name] = member.id  # le nom de l'eleve en key pour le tri et son id en value
-
+        print(appel_dic)
         head_str = "".join([f"<th>{appel}</th>" for appel in appel_dic.keys()])  # tete du tableau
         body_str = ""
         elevecount = 0
+        elevecount2 = 0
+        elevetotal = len(eleve_dic.keys())
         for nom in sorted(eleve_dic):
             elevecount += 1
+            elevecount2 += 1
             elv_id = eleve_dic[nom]  # on prend l'id de l eleve
             base = f"<tr><td>{nom}</td>"  # premiere colonne nom
             for cours, present in appel_dic.items():
@@ -236,16 +177,12 @@ class HearthBeat(commands.Cog):
                     """
             body_str += base + "</tr>"  # on ferme les balises
 
-            if elevecount > 5:
-                if self.host == "localhost":
-                    imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), 'classe.jpg',
-                                       options={"xvfb": "", "zoom": 2.4})
-                else:
-                    imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), 'classe.jpg', options={"zoom": 2.4})
+            if elevecount > 5 or elevetotal == elevecount2:
+                img = imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), False, options={"zoom": 2.4})
                 await msg.edit(content=":gear:Send Image :arrow_up:")
-                with open('classe.jpg', 'rb') as f:
-                    picture = discord.File(f)
-                    await ctx.send(file=picture)
+                picture = discord.File(io.BytesIO(img), filename="heathbeat.jpg")
+                await ctx.send(file=picture)
                 elevecount = 0
                 body_str = ""
         await msg.delete()
+        msg = await ctx.send(f":gear: WIP : Lien pour acceder a la classe : http://site.com/users/{ctx.guild.id} :floppy_disk:")

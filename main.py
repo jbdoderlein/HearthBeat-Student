@@ -1,49 +1,47 @@
-import asyncio
-import datetime
-
-import aiohttp
 import discord
 from discord.ext import commands
 from cogs.HearthBeat import HearthBeat
 import argparse
+from aiohttp import web
+from urllib.parse import unquote
+import humanize
+humanize.i18n.activate("fr_FR")
 
 
 ap = argparse.ArgumentParser()
-ap.add_argument("-t", "--token", required=True, help="bot token")
-ap.add_argument("-dbh", "--dbhost", type=str, default="localhost", help="Mongod db hostname")
-ap.add_argument("-dbu", "--dbuser", type=str, default=None, help="Mongod db username")
-ap.add_argument("-dbp", "--dbpassword", type=str, default=None, help="Mongod db password")
+ap.add_argument("-t", "--token", required=True, help="Bot token")
+ap.add_argument("-dbh", "--dbhost", type=str, default="localhost", help="Postgres hostname")
+ap.add_argument("-dbd", "--dbdatabase", type=str, default=None, help="Postgres database")
+ap.add_argument("-dbu", "--dbuser", type=str, default=None, help="Postgres username")
+ap.add_argument("-dbp", "--dbpassword", type=str, default=None, help="Postgres password")
+ap.add_argument("-adm", "--admin", nargs='+', type=int, default=[177375818635280384], help='Admin discord id list')
 
 args = vars(ap.parse_args())
 
-
-
 def is_dev():
     async def predicate(ctx):
-        return ctx.author.id == 177375818635280384 or ctx.author.id == 138688645908398080
+        return ctx.author.id in args['admin']
 
     return commands.check(predicate)
 
 
-description = '''Heart Beat'''
-bot = commands.Bot(command_prefix='?', description=description)
+description = '''Hearth Beat Student'''
+intents = discord.Intents.default()
+intents.typing = False
+intents.presences = False
+intents.members = True
+bot = commands.Bot(command_prefix='?', description=description, intents=intents)
 
-bot.add_cog(HearthBeat(bot, host=args['dbhost'], username=args['dbuser'], password=args['dbpassword']))
-
-bot.screenshot = {
-            'channel' : None,
-            'start_time' : None,
-            'duration' : None,
-            'label' : "Maths"
-        }
+bot.add_cog(HearthBeat(bot, host=args['dbhost'], database=args['dbdatabase'], username=args['dbuser'], password=args['dbpassword']))
 
 @bot.event
 async def on_ready():
+    await bot.cogs['HearthBeat'].init()
     print('Logged in as')
     print(bot.user.name)
     print(bot.user.id)
     print('------')
-    activity = discord.Activity(name="la classe",
+    activity = discord.Activity(name="classroom",
                                 type=discord.ActivityType.watching)
     await bot.change_presence(activity=activity)
 
@@ -53,7 +51,7 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.BotMissingPermissions):
         message = "Bot need more permissions"
     elif isinstance(error, commands.BadArgument):
-        message = "Mauvais argument (le role ou l'élève n'existe pas ?)"
+        message = "Bad argument"
     else:
         message = f"Fatal error : `{error}`"
     await ctx.send(message)
@@ -83,35 +81,58 @@ async def shutdown(ctx):
     """shutdown"""
     await bot.close()
 
-@bot.event
-async def on_message(message):
-    if message.author.id == bot.user.id:
-        return
-    if bot.screenshot['channel'] is not None:
-        if message.channel.id == bot.screenshot['channel']:
-            if bot.screenshot['start_time'].timestamp() + 60 * bot.screenshot['duration'] > datetime.datetime.now().timestamp():
-                if len(message.attachments) != 0:
-                    d = datetime.datetime.now()
-                    param = {
-                        'pass': 'azerty',
-                        'url': str(message.attachments[0].url),
-                        'date': f"{d.year}-{'0'+str(d.month) if d.month<10 else d.month}-{d.day}",
-                        'matiere': bot.screenshot['label']
-                    }
-                    async with aiohttp.ClientSession() as session:
-                        async with session.post('https://rediffs-mpsi3.fr/ajoutphoto.php', data=param) as r:
-                            await message.add_reaction("\N{WHITE HEAVY CHECK MARK}")
-                else:
-                    await message.channel.send("Pas d'image dans le message")
 
-            else:
-                await message.channel.send("La session a pris fin")
-                bot.screenshot = {
-                    'channel': None,
-                    'start_time': None,
-                    'duration': None,
-                    'label': "Maths"
-                }
-    await bot.process_commands(message)
+
+async def web_service():
+    routes = web.RouteTableDef()
+
+    @routes.get('/')
+    async def hello(request):
+        return web.Response(text="hello ")
+
+    @routes.get('/user/{guild}/{user}')
+    async def get_user(request):
+        #Trouver le memebre et les info discord
+        guild_id = unquote(request.match_info['guild'])
+        user_id = unquote(request.match_info['user'])
+        guild = bot.get_guild(int(guild_id))
+        if not guild: return web.Response(text="No guild")
+        member = guild.get_member(int(user_id))
+        if not member: return web.Response(text="No member")
+        # Avoir les info hearthbeat
+        data = await bot.cogs['HearthBeat'].get_info(guild_id, user_id)
+        # Return
+        return web.json_response({
+            'name': member.name,
+            'nick': member.nick,
+            'avatar': member.avatar,
+            'data': data
+        })
+
+    @routes.get('/users/{guild}')
+    async def get_users(request):
+        # Trouver le memebre et les info discord
+        guild_id = unquote(request.match_info['guild'])
+        guild = bot.get_guild(int(guild_id))
+        if not guild: return web.Response(text="No guild")
+        members = guild.members
+        if not members: return web.Response(text="No members")
+        # Avoir les info hearthbeat
+        return web.json_response({member.id: {'name': member.name, 'avatar': member.avatar} for member in members})
+
+    app = web.Application()
+    app.add_routes(routes)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, host='127.0.0.1', port=7500, reuse_address=True)
+    print("Starting http server port : ", 7500)
+    await site.start()
+
+
+try:
+    bot.loop.create_task(web_service())
+    pass
+except Exception as e:
+    print(e)
 
 bot.run(args['token'])

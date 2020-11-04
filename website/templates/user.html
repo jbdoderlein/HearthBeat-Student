@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <title>Hearth Beat</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet" />
+  <style>
+    nav{
+  background-color: #311b92 !important;
+}
+
+.chart-container {
+  position: relative;
+  margin: auto;
+
+}
+.collapsible{
+  width: 100%!important;
+}
+  </style>
+</head>
+
+<body>
+  <nav>
+    <div class="nav-wrapper">
+      <a href="#" class="brand-logo center">Hearth Beat</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="card-panel grey lighten-5 z-depth-1">
+          <div class="row valign-wrapper">
+            <div class="col s2">
+              <img src="https://cdn.discordapp.com/avatars/{{user_id}}/{{avatar}}.webp" alt="" class="circle responsive-img"> <!-- notice the "circle" class -->
+            </div>
+            <div class="col s10">
+              <h3 class="center">Fiche de {{ nick }}</h3>
+            </div>
+          </div>
+        </div>
+    <div class="row">
+      <div class="col s12 m12 l6">
+        <div class="card-panel grey lighten-5 z-depth-1">
+
+            <ul class="collapsible">
+                {% for key, value in data.items() %}
+                <li>
+                    <div class="collapsible-header">{{key}} <span class="new badge deep-purple" data-badge-caption="/{{ value['total'] }}">{{ value['present']|length }}</span></div>
+                    <div class="collapsible-body">
+                        {% for cour in value['present'] %}
+                        <p>{{cour}}</p>
+                        {% endfor %}
+                    </div>
+                </li>
+                {% endfor %}
+
+  </ul>
+
+        </div>
+      </div>
+      <div class="col s12 m12 l6">
+        <div class="card-panel grey lighten-5 z-depth-1">
+          <div class="row valign-wrapper">
+            <div class="chart-container"><canvas id="myChart1" ></canvas></div>
+          </div>
+          <div class="row valign-wrapper">
+            <div class="chart-container"><canvas id="myChart2" ></canvas></div>
+          </div>
+          <div class="row valign-wrapper">
+            <div class="chart-container"><canvas id="myChart3" ></canvas></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script>
+  $(document).ready(function(){
+    $('.collapsible').collapsible();
+  });
+</script>
+<script>
+var ctx1 = document.getElementById('myChart1').getContext('2d');
+var myChart1 = new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+        labels: ['Suivie', 'Non suivie'],
+        datasets: [{
+            data: [80, 20],
+            backgroundColor: [
+                'rgb(49, 27, 146)',
+                'rgb(209, 196, 233)',
+            ]
+        }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      title: {
+            display: true,
+            text: 'Cours suivie / Cours totaux'
+        }
+    }
+});
+  var ctx2 = document.getElementById('myChart2').getContext('2d');
+var myChart2 = new Chart(ctx2, {
+    type: 'pie',
+    data: {
+        labels: ['Maths', 'Physique', 'IPT', 'Option'],
+        datasets: [{
+            data: [40,10,20,30],
+            backgroundColor: [
+                'rgba(255, 99, 132, 1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)'
+            ]
+        }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      title: {
+            display: true,
+            text: 'Distribution des cours suivie'
+        }
+    }
+});
+  var ctx3 = document.getElementById('myChart3').getContext('2d');
+var myChart3 = new Chart(ctx3, {
+    type: 'pie',
+    data: {
+        labels: ['Maths', 'Physique', 'IPT', 'Option'],
+        datasets: [{
+            data: [40,10,20,30],
+            backgroundColor: [
+                'rgba(255, 99, 132, 1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)'
+            ]
+        }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      title: {
+            display: true,
+            text: 'Je sais pas quoi mettre'
+        }
+    }
+});
+</script>
