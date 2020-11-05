@@ -118,7 +118,7 @@ async def web_service():
         members = guild.members
         if not members: return web.Response(text="No members")
         # Avoir les info hearthbeat
-        return web.json_response({member.id: {'name': member.name, 'avatar': member.avatar} for member in members})
+        return web.json_response({member.id: {'name': (member.name if not member.nick else member.nick), 'avatar': member.avatar} for member in members})
 
     app = web.Application()
     app.add_routes(routes)
