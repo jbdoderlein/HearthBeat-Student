@@ -113,6 +113,10 @@ class HearthBeat(commands.Cog):
             await ctx.send("Il faut se connecter à un vocal")
 
     @commands.command(pass_context=True, no_pm=True)
+    async def present(self, ctx, role: discord.Role, *, matiere: typing.Optional[str] = 'All'):
+        await ctx.send(f":gear: WIP : Lien pour acceder à l'appel : https://hearthbeatstudent.tk/appel/{ctx.guild.id}/{matiere}/{role.id} :floppy_disk:")
+
+    @commands.command(pass_context=True, no_pm=True)
     async def classe(self, ctx, role: discord.Role, *, matiere: typing.Optional[str] = 'All'):
         """Affiche un tableau avec les présence (en mieux)"""
         msg = await ctx.send(":gear: Start to process data :floppy_disk:")
