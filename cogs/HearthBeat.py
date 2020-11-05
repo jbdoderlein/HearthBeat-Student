@@ -183,7 +183,7 @@ class HearthBeat(commands.Cog):
                     img = imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), False, options={"zoom": 2.4})
                 elif os.name == "posix":
                     img = imgkit.from_string(HTML_TEMPLATE.format(head=head_str, body=body_str), False,
-                                             options={"xvfb": "", "zoom": 2.4})[487:-136]
+                                             options={"xvfb": "", "zoom": 2.4, 'quiet': ''})
                 else:
                     await ctx.send("Systeme non reconnu")
                 await msg.edit(content=":gear:Send Image :arrow_up:")
