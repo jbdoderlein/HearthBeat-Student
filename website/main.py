@@ -13,6 +13,12 @@ def get_user(guild_id, user_id):
     if r.status_code == 404:
         abort(404)
     info = r.json()
+    total = sum([i['total'] for i in info['data'].values()])
+    present = sum([len(i['present']) for i in info['data'].values()])
+    info['ch2label'] = list(info['data'].keys())
+    info['ch2data'] = [len(i['present']) for i in info['data'].values()]
+    info['ch1data'] = [present, total - present]
+    print(info)
     return render_template('user.html', user_id=user_id, **info)
 
 @app.route('/users/<int:guild_id>')
