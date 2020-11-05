@@ -67,9 +67,6 @@
           <div class="row valign-wrapper">
             <div class="chart-container"><canvas id="myChart2" ></canvas></div>
           </div>
-          <div class="row valign-wrapper">
-            <div class="chart-container"><canvas id="myChart3" ></canvas></div>
-          </div>
         </div>
 
       </div>
@@ -79,6 +76,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/google-palette/1.1.0/palette.js"></script>
 <script>
   $(document).ready(function(){
     $('.collapsible').collapsible();
@@ -91,7 +89,7 @@ var myChart1 = new Chart(ctx1, {
     data: {
         labels: ['Suivie', 'Non suivie'],
         datasets: [{
-            data: [80, 20],
+            data: [{%for i in ch1data%}{{i}},{%endfor%}],
             backgroundColor: [
                 'rgb(49, 27, 146)',
                 'rgb(209, 196, 233)',
@@ -110,15 +108,12 @@ var myChart1 = new Chart(ctx1, {
 var myChart2 = new Chart(ctx2, {
     type: 'pie',
     data: {
-        labels: ['Maths', 'Physique', 'IPT', 'Option'],
+        labels: [{%for i in ch2label%}'{{i}}',{%endfor%}],
         datasets: [{
-            data: [40,10,20,30],
-            backgroundColor: [
-                'rgba(255, 99, 132, 1)',
-                'rgba(54, 162, 235, 1)',
-                'rgba(255, 206, 86, 1)',
-                'rgba(75, 192, 192, 1)'
-            ]
+            data: [{%for i in ch2data%}{{i}},{%endfor%}],
+            backgroundColor: palette('tol', {{ch2data|length}}).map(function(hex) {
+                return '#' + hex;
+            })
         }]
     },
     options: {
@@ -129,27 +124,5 @@ var myChart2 = new Chart(ctx2, {
         }
     }
 });
-  var ctx3 = document.getElementById('myChart3').getContext('2d');
-var myChart3 = new Chart(ctx3, {
-    type: 'pie',
-    data: {
-        labels: ['Maths', 'Physique', 'IPT', 'Option'],
-        datasets: [{
-            data: [40,10,20,30],
-            backgroundColor: [
-                'rgba(255, 99, 132, 1)',
-                'rgba(54, 162, 235, 1)',
-                'rgba(255, 206, 86, 1)',
-                'rgba(75, 192, 192, 1)'
-            ]
-        }]
-    },
-    options: {
-      maintainAspectRatio: false,
-      title: {
-            display: true,
-            text: 'Je sais pas quoi mettre'
-        }
-    }
-});
+
 </script>
