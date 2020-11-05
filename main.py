@@ -96,9 +96,9 @@ async def web_service():
         guild_id = unquote(request.match_info['guild'])
         user_id = unquote(request.match_info['user'])
         guild = bot.get_guild(int(guild_id))
-        if not guild: return web.Response(text="No guild")
+        if not guild: return web.HTTPNotFound()
         member = guild.get_member(int(user_id))
-        if not member: return web.Response(text="No member")
+        if not member: return web.HTTPNotFound()
         # Avoir les info hearthbeat
         data = await bot.cogs['HearthBeat'].get_info(guild_id, user_id)
         # Return
@@ -114,11 +114,31 @@ async def web_service():
         # Trouver le memebre et les info discord
         guild_id = unquote(request.match_info['guild'])
         guild = bot.get_guild(int(guild_id))
-        if not guild: return web.Response(text="No guild")
+        if not guild: return web.HTTPNotFound()
         members = guild.members
-        if not members: return web.Response(text="No members")
+        if not members: return web.HTTPNotFound()
         # Avoir les info hearthbeat
         return web.json_response({member.id: {'name': (member.name if not member.nick else member.nick), 'avatar': member.avatar} for member in members})
+
+    @routes.get('/appel/{guild}/{matiere}/{role}')
+    async def get_users(request):
+        # Trouver le memebre et les info discord
+        guild_id = unquote(request.match_info['guild'])
+        matiere = unquote(request.match_info['matiere'])
+        role_id = unquote(request.match_info['role'])
+
+        guild = bot.get_guild(int(guild_id))
+        if not guild:
+            print("no guild")
+            return web.HTTPNotFound()
+
+        role = guild.get_role(int(role_id))
+        if not role:
+            print("no role")
+            return web.HTTPNotFound()
+
+        data = await bot.cogs['HearthBeat'].generate_appel(guild, matiere, role)
+        return web.json_response({'role': str(role), 'data': data})
 
     app = web.Application()
     app.add_routes(routes)

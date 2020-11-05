@@ -70,6 +70,26 @@ class HearthBeat(commands.Cog):
                     f"{appel['name']}, {humanize.naturaldate(appel['date'])} dans {appel['channel']}")
         return data
 
+    async def generate_appel(self, guild, matiere, role):
+        await guild.chunk()
+        data = {}
+        for member in role.members:  # Pour chaque eleve avec le role
+            if member.nick is None:  # Si il n  pas de surnom pour le serv
+                name = member.name
+            else:
+                name = member.nick
+            if len(name.split(" ")) == 2:
+                name = " ".join(name.split(" ")[::-1])
+            data[member.id] = {'name': name, 'data': []}  # le nom de l'eleve en key pour le tri et son id en value
+        appels = await self.connector.fetch('SELECT * FROM appel WHERE guild=$1', str(guild.id))
+        for appel in appels:
+            if matiere == "All" or appel['name'] == matiere:
+                date = appel['date']  # date du cours
+                present = json.loads(appel['present'])
+                for i in data.keys():
+                    data[i]['data'].append((f"{appel['name']}_{date.day}_{date.month}", i in present))
+        return data
+
 
     @commands.command(pass_context=True, no_pm=True)
     async def appel(self, ctx, *, name: str):
@@ -91,42 +111,6 @@ class HearthBeat(commands.Cog):
                 f"Ajout de l'appel à la base de données, `{len(present)}` participants le `{appel['date']}` dans `{appel['channel']}`")
         else:
             await ctx.send("Il faut se connecter à un vocal")
-
-    @commands.command(pass_context=True, no_pm=True)
-    async def info(self, ctx, *, member: discord.Member):
-        """Affiche les infos a propos d'un eleve"""
-        embed = discord.Embed(
-            type="rich",
-            color=discord.Colour.blue(),
-        )
-        embed.set_author(
-            name='Heart Beat',
-            icon_url="https://cdn.iconscout.com/icon/free/png-256/student-classroom-bench-tired-bore-rest-resting-46451.png"
-        )
-        if member.nick is None:
-            embed.title = f"Appel de {member.name}"
-        else:
-            embed.title = f"Appel de {member.nick}"
-
-        list_appel = []
-        type_appel = {}
-        async for document in self.db.appels.find({'guild': str(ctx.guild.id)}):
-
-            if document['name'] not in type_appel:
-                type_appel[document['name']] = [0, 0]
-            type_appel[document['name']][1] += 1
-            if member.id in document['present']:
-                list_appel.append(
-                    f"{document['name']} le {document['date'].day}/{document['date'].month} dans {document['channel']}")
-                type_appel[document['name']][0] += 1
-
-        embed.add_field(name="Nombre de cours", value=str(len(list_appel)))
-        embed.add_field(name="Liste des cours : ", value="`" + "\n".join(list_appel) + "`")
-
-        type_str = "`" + "\n".join([f"{a} : {i[0]}/{i[1]}" for a, i in type_appel.items()]) + "`"
-        embed.add_field(name="Moyenne sur les cours : ", value=type_str)
-
-        await ctx.send(embed=embed)
 
     @commands.command(pass_context=True, no_pm=True)
     async def classe(self, ctx, role: discord.Role, *, matiere: typing.Optional[str] = 'All'):
@@ -152,7 +136,7 @@ class HearthBeat(commands.Cog):
             if len(name.split(" ")) == 2:
                 name = " ".join(name.split(" ")[::-1])
             eleve_dic[name] = member.id  # le nom de l'eleve en key pour le tri et son id en value
-        print(appel_dic)
+        print(eleve_dic)
         head_str = "".join([f"<th>{appel}</th>" for appel in appel_dic.keys()])  # tete du tableau
         body_str = ""
         elevecount = 0

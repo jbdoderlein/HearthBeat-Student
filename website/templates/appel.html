@@ -1,39 +1,109 @@
-<!DOCTYPE html>
-<html lang="fr">
 <head>
-    <title>Hearth Beat</title>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>Hearth Beat</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet" />
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/tabulator/4.8.4/css/materialize/tabulator_materialize.min.css" rel="stylesheet">
+
   <style>
-    nav{
-  background-color: #311b92 !important;
+    nav {
+      background-color: #311b92 !important;
+    }
+    input.search-field {
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.54);
+  border-radius: 2px;
+  border: 0;
+  border-radius: 5px;
+  height: 36px;
+  padding: 8px 8px 8px 60px;
+  width: 100%;
+  background: #f7f7f7;
+  transition: background 0.2s, width .2s;
 }
-
-.chart-container {
+input.search-field:hover {
+  background: #ebebeb;
+}
+.searchbox {
   position: relative;
-  margin: auto;
-
 }
-.collapsible{
-  width: 100%!important;
+::placeholder {
+  /* Chrome, Firefox, Opera, Safari 10.1+ */
+  color: rgba(0, 0, 0, 0.54);
+}
+input.search-field:focus {
+  outline: none;
+  width: 100%;
+  color: #212121;
+}
+input.search-field:focus:hover {
+  background: #f7f7f7;
 }
   </style>
 </head>
+
 <body>
-
-<table class="striped">
-        <thead>
-          <tr>
-              <th>Nom/Prénom</th>
-              {{head}}}
-          </tr>
-        </thead>
-
-        <tbody>
-             {{body}}
-        </tbody>
-      </table>
-
+  <nav>
+    <div class="nav-wrapper">
+      <a href="#" class="brand-logo center">Hearth Beat</a>
+    </div>
+  </nav>
+  <div class="row">
+    <div class="col s1 "></div>
+    <div class="col s10">
+      <h4 class="center">Présence {% if matiere=="All" %} à tous les cours {%else%} aux cours de {{matiere}} {%endif%} avec le role {{ role }}</h4>
+      <div>
+        <input class="browser-default search-field" id="filter-value" type="text" placeholder="Filtrer par nom">
+      </div>
+      <div id="example-table"></div>
+    </div>
+    <div class="col s1"></div>
+  </div>
 </body>
-</html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/tabulator/4.8.4/js/tabulator.min.js"></script>
+<script>
+    var tabledata = [
+      {% for i in data.values() %}
+        {{'{'}}name:'{{ i['name'] }}',
+        {% for d in i['data'] %}
+            {{d[0]}}:{% if d[1] %} '<i class="material-icons green-text">check_box</i>'
+            {% else %} '<i class="material-icons red-text">indeterminate_check_box</i>'
+            {%endif%},{% endfor %}{{'}, '}}
+      {% endfor %}
+ 	];
+
+    var valueEl = document.getElementById("filter-value");
+
+function updateFilter(){
+  table.setFilter('name',"like", valueEl.value);
+}
+
+document.getElementById("filter-value").addEventListener("keyup", updateFilter);
+
+var table = new Tabulator("#example-table", {
+  height: 500,
+ 	data:tabledata, //assign data to table
+ 	layout:"fitData", //fit columns to width of table (optional)
+  autoColumns:true,
+  autoColumnsDefinitions:function(definitions){
+        //definitions - array of column definition objects
+
+        definitions.forEach((column) => {
+            column.hozAlign="center";
+            column.formatter="html";
+            if (column.title=="name"){
+              column.title="Nom Prénom"
+            }
+            else{
+              var t = column.title.split("_");
+              column.title=`${t[0]} le ${t[1]}/${t[2]}`
+            }
+        });
+
+        return definitions;
+    },
+});
+</script>
