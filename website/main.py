@@ -1,11 +1,11 @@
-from flask import Flask, render_template, abort
+from flask import Flask, render_template, abort, redirect
 import requests
 import json
 app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return redirect("https://github.com/jbdoderlein/HearthBeat-Student")
 
 @app.route('/user/<int:guild_id>/<int:user_id>')
 def get_user(guild_id, user_id):
